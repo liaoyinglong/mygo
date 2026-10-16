@@ -40,7 +40,7 @@ func drawn(r rune) bool {
 		return boxArms[r-0x2500] != "" || 0x256d <= r && r <= 0x2573
 	case 0x2580 <= r && r <= 0x259f:
 		return true
-	case 0xe0b0 <= r && r <= 0xe0b3:
+	case 0xe0b0 <= r && r <= 0xe0b7:
 		return true
 	}
 	return false
@@ -59,6 +59,33 @@ func drawBox(p *ui.Painter, r rune, c ui.Rect, col ui.Color) {
 	}
 	w, h := x1-x0, y1-y0
 	switch {
+	case 0xe0b4 <= r && r <= 0xe0b7:
+		// A half ellipse fills the cell height and meets its background
+		// with a vertical edge. Thin separators draw only the curved edge.
+		const k = 0.5522847498 // cubic approximation of a quarter ellipse
+		solid := r == 0xe0b4 || r == 0xe0b6
+		thick := min(w, h, max(1, float32(math.Round(float64(s)))))
+		inset := float32(0)
+		if !solid {
+			inset = thick / 2 // keep the whole stroke inside the cell
+		}
+		edge, tip := x0+inset, x1-inset
+		if r == 0xe0b6 || r == 0xe0b7 {
+			edge, tip = tip, edge
+		}
+		top, bottom, mid := y0+inset, y1-inset, y0+h/2
+		rx, ry := tip-edge, (bottom-top)/2
+		var path ui.Path
+		path.MoveTo(edge/s, top/s).
+			CubeTo((edge+k*rx)/s, top/s, tip/s, (mid-k*ry)/s, tip/s, mid/s).
+			CubeTo(tip/s, (mid+k*ry)/s, (edge+k*rx)/s, bottom/s, edge/s, bottom/s)
+		if solid {
+			path.Close()
+			p.FillPath(&path, col)
+		} else {
+			p.StrokePath(&path, thick/s, col)
+		}
+		return
 	case 0x2580 <= r && r <= 0x259f:
 		drawBlock(r, x0, y0, w, h, fill, p, col, s)
 		return
